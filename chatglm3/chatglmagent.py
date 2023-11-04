@@ -19,8 +19,8 @@ class ChatGLMAgent(ChatGLM):
     def _llm_type(self) -> str:
         return "ChatGLM3"
 
-    def _tool_history(self, prompt: str):
-        ans = []
+
+    def _init_history(self, prompt):
         tool_prompts = prompt.split(
             "You have access to the following tools:\n\n")[1].split("\n\nUse a json blob")[0].split("\n")
 
@@ -36,13 +36,15 @@ class ChatGLMAgent(ChatGLM):
                     f"Tool {tool} config not found! It's description is {tool_prompts[i]}"
                 )
 
-        ans.append({
+        self.history.append({
             "role": "system",
             "content": "Answer the following questions as best as you can. You have access to the following tools:",
             "tools": tools_json
         })
+
+    def _extract_query(self, prompt: str):
         query = f"""{prompt.split("Human: ")[-1].strip()}"""
-        return ans, query
+        return query
 
     def _extract_observation(self, prompt: str):
         return_json = prompt.split("Observation: ")[-1].split("\nThought:")[0]
@@ -85,8 +87,10 @@ Action:
         print("======")
         print(prompt)
         print("======")
+        if not self.history:
+            self._init_history(prompt)
         if not self.has_search:
-            self.history, query = self._tool_history(prompt)
+            query = self._extract_query(prompt)
         else:
             self._extract_observation(prompt)
             query = ""
